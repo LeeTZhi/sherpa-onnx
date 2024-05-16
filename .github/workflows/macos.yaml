@@ -107,6 +107,22 @@ jobs:
           otool -L build/bin/sherpa-onnx
           otool -l build/bin/sherpa-onnx
 
+      - name: Test offline transducer
+        shell: bash
+        run: |
+          export PATH=$PWD/build/bin:$PATH
+          export EXE=sherpa-onnx-offline
+
+          .github/scripts/test-offline-transducer.sh
+
+      - name: Test online CTC
+        shell: bash
+        run: |
+          export PATH=$PWD/build/bin:$PATH
+          export EXE=sherpa-onnx
+
+          .github/scripts/test-online-ctc.sh
+
       - name: Test offline punctuation
         shell: bash
         run: |
@@ -150,14 +166,6 @@ jobs:
 
           .github/scripts/test-kws.sh
 
-      - name: Test online CTC
-        shell: bash
-        run: |
-          export PATH=$PWD/build/bin:$PATH
-          export EXE=sherpa-onnx
-
-          .github/scripts/test-online-ctc.sh
-
       - name: Test offline TTS
         if: matrix.with_tts == 'ON'
         shell: bash
@@ -191,14 +199,6 @@ jobs:
           export EXE=sherpa-onnx-offline
 
           .github/scripts/test-offline-ctc.sh
-
-      - name: Test offline transducer
-        shell: bash
-        run: |
-          export PATH=$PWD/build/bin:$PATH
-          export EXE=sherpa-onnx-offline
-
-          .github/scripts/test-offline-transducer.sh
 
       - name: Test online transducer
         shell: bash

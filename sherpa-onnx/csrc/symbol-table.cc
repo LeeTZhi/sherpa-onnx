@@ -67,9 +67,13 @@ void SymbolTable::Init(std::istream &is) {
     // the following check.
     //
     // Note: Only id2sym_ matters as we use it to convert ID to symbols.
+#if 0
+    // we disable the test here since for some multi-lingual BPE models
+    // from NeMo, the same symbol can appear multiple times with different IDs.
     if (sym != " ") {
       assert(sym2id_.count(sym) == 0);
     }
+#endif
 
     assert(id2sym_.count(id) == 0);
 
@@ -96,9 +100,9 @@ int32_t SymbolTable::operator[](const std::string &sym) const {
   return sym2id_.at(sym);
 }
 
-bool SymbolTable::contains(int32_t id) const { return id2sym_.count(id) != 0; }
+bool SymbolTable::Contains(int32_t id) const { return id2sym_.count(id) != 0; }
 
-bool SymbolTable::contains(const std::string &sym) const {
+bool SymbolTable::Contains(const std::string &sym) const {
   return sym2id_.count(sym) != 0;
 }
 
