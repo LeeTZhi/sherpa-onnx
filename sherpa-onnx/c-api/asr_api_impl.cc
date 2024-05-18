@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <vector>
 
-#include "tokens_file_larger.h"
-#include "version.h"
 
 #ifndef ASR_API_VERSION
     #define ASR_API_VERSION "0.2.1"
@@ -28,7 +26,17 @@
 
 #define NULL_PTR_2_STR(t) (t != nullptr) ? t : ""
 
-using namespace asr_api;
+/// @brief verify whether the signature is valid
+/// @param pSignature 
+/// @param sig_len 
+/// @return 0 if the signature is valid, -1 or other value otherwise
+int verify_authtoken(const char* pSignature, const int sig_len);
+
+/// @brief get device id
+/// @param device_id
+/// @param device_id_len
+/// @return 0 if success, -1 or other value otherwise
+int get_device_id( uint8_t device_id[], int* device_id_len);
 
 char g_str_error[1024] = {0};
 
@@ -38,48 +46,36 @@ class ASRRecognizer_Impl {
             recognizer_ = nullptr;
             stream_ = nullptr;
             encoder_param_buffer_ = nullptr;
-            encoder_bin_buffer_ = nullptr;
+            encoder_param_size_ = 0;
             decoder_param_buffer_ = nullptr;
-            decoder_bin_buffer_ = nullptr;
+            decoder_param_size_ = 0;
             joiner_param_buffer_ = nullptr;
-            joiner_bin_buffer_ = nullptr;
+            joiner_param_size_ = 0;
             tokens_buffer_ = nullptr;
 
             usage_count_ = 0;
         }
         ~ASRRecognizer_Impl() {
             if (recognizer_ != nullptr) {
-                DestroyRecognizer(recognizer_);
+                delete recognizer_;
                 recognizer_ = nullptr;
             }
-            if (stream_ != nullptr) {
-                DestroyStream(stream_);
-                stream_ = nullptr;
-            }
+            
             if (encoder_param_buffer_ != nullptr) {
                 free(encoder_param_buffer_);
                 encoder_param_buffer_ = nullptr;
             }
-            if (encoder_bin_buffer_ != nullptr) {
-                free(encoder_bin_buffer_);
-                encoder_bin_buffer_ = nullptr;
-            }
+            
             if (decoder_param_buffer_ != nullptr) {
                 free(decoder_param_buffer_);
                 decoder_param_buffer_ = nullptr;
             }
-            if (decoder_bin_buffer_ != nullptr) {
-                free(decoder_bin_buffer_);
-                decoder_bin_buffer_ = nullptr;
-            }
+            
             if (joiner_param_buffer_ != nullptr) {
                 free(joiner_param_buffer_);
                 joiner_param_buffer_ = nullptr;
             }
-            if (joiner_bin_buffer_ != nullptr) {
-                free(joiner_bin_buffer_);
-                joiner_bin_buffer_ = nullptr;
-            }
+            
             if (tokens_buffer_ != nullptr) {
                 free(tokens_buffer_);
                 tokens_buffer_ = nullptr;
@@ -106,13 +102,7 @@ class ASRRecognizer_Impl {
             int* isEndPoint
             );
         int Reset() {
-            if ( recognizer_ != nullptr && stream_ != nullptr) {
-                ::Reset(recognizer_, stream_);
-                return 0;
-            }
-            else {
-                return -1;
-            }
+            return 0;
         }
 
         void set_auth_token(const char* auth_token, int auth_token_len) {
@@ -124,16 +114,17 @@ class ASRRecognizer_Impl {
         
     protected:
         sherpa_onnx::KeywordSpotter* recognizer_;
+        std::unique_ptr<sherpa_onnx::OnlineStream> stream_;
 
         sherpa_onnx::KeywordSpotterConfig config_;
 
         ///six model weights
         uint8_t* encoder_param_buffer_;
-        uint8_t* encoder_bin_buffer_;
+        size_t encoder_param_size_;
         uint8_t* decoder_param_buffer_;
-        uint8_t* decoder_bin_buffer_;
+        size_t decoder_param_size_;
         uint8_t* joiner_param_buffer_;
-        uint8_t* joiner_bin_buffer_;
+        size_t joiner_param_size_;
         uint8_t* tokens_buffer_;
 
         ///for control the total frames number
@@ -174,11 +165,11 @@ class ASRRecognizer_Impl {
 static bool load_from_merged_file(
     const std::string& merged_file_name, 
     uint8_t** encoder_param_buffer, 
-    uint8_t** encoder_bin_buffer,
+    size_t& encoder_param_size,
     uint8_t** decoder_param_buffer,
-    uint8_t** decoder_bin_buffer,
+    size_t& decoder_param_size,
     uint8_t** joiner_param_buffer,
-    uint8_t** joiner_bin_buffer,
+    size_t& joiner_param_size,
     uint8_t** tokens_buffer,
     size_t& tokens_buffer_size
     );
@@ -190,13 +181,13 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
 
     ///model config
     memset(&config.model_config, 0, sizeof(config.model_config));
-    config.model_config.buffer_flag = 1;
+    config.model_config.transducer.buffer_flag_ = 1;
     config.model_config.num_threads = 2;
-
+    config.model_config.provider = "cpu";
+    config.model_config.model_type = "zipformer";
     //decoder config
-    config.decoder_config.num_active_paths = 2;
-    config.decoder_config.decoding_method = nullptr;
-
+    //config.model_config.num_active_paths = 2;
+    
     /* 
      for these parameters 
      1. endpoint and vad 
@@ -204,13 +195,9 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
     */
 
     //config.decoder_config.num_active_paths = 1;
-    config.enable_endpoint = 1;
-    config.rule1_min_trailing_silence = 1.5;
-    config.rule2_min_trailing_silence = 1.2;
-    config.rule3_min_utterance_length = 200;
 
-    config.hotwords_file = nullptr;
-    config.hotwords_score = 1.5f;
+    config.keywords_file = nullptr;
+    config.keywords_score = 1.5f;
 }
 
 int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
@@ -233,11 +220,11 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     bool bLoad = load_from_merged_file(
             model_name, 
             &encoder_param_buffer_, 
-            &encoder_bin_buffer_,
+            encoder_param_size_,
             &decoder_param_buffer_,
-            &decoder_bin_buffer_,
+            decoder_param_size_,
             &joiner_param_buffer_,
-            &joiner_bin_buffer_,
+            joiner_param_size_,
             &tokens_buffer_,
             tokens_buffer_size
             );
@@ -245,28 +232,24 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
         return -1;
     }
 
-    config_.model_config.encoder_param_buffer = encoder_param_buffer_;
-    config_.model_config.encoder_bin_buffer = encoder_bin_buffer_;
-    config_.model_config.decoder_param_buffer = decoder_param_buffer_;
-    config_.model_config.decoder_bin_buffer = decoder_bin_buffer_;
-    config_.model_config.joiner_param_buffer = joiner_param_buffer_;
-    config_.model_config.joiner_bin_buffer = joiner_bin_buffer_;
+    config_.model_config.transducer.encoder_buffer_ = reinterpret_cast<char*>(encoder_param_buffer_);
+    config_.model_config.transducer.encoder_buffer_size_ = encoder_param_size_;
+    config_.model_config.transducer.decoder_buffer_ = reinterpret_cast<char*>(decoder_param_buffer_);
+    config_.model_config.transducer.decoder_buffer_size_ = decoder_param_size_;
+    config_.model_config.transducer.joiner_buffer_ = reinterpret_cast<char*>(joiner_param_buffer_);
+    config_.model_config.transducer.joiner_buffer_size_ = joiner_param_size_;
 
-    config_.model_config.tokens_buffer = reinterpret_cast<const unsigned char*>(tokens_buffer_);
+    config_.model_config.tokens_buffer = reinterpret_cast<unsigned char*>(tokens_buffer_);
     config_.model_config.tokens_buffer_size = tokens_buffer_size;
     
-    ///endpoint parameters
-    config_.enable_endpoint = asr_config.enable_endpoint;
-    config_.rule1_min_trailing_silence = asr_config.rule1_min_threshold;
-    config_.rule2_min_trailing_silence = asr_config.rule2_min_threshold;
-    config_.rule3_min_utterance_length = asr_config.rule3_min_threshold;
-    ///hotwords
-    config_.hotwords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
-    config_.hotwords_score = asr_config.hotwords_factor;
     
-    recognizer_ = CreateRecognizer(&config_);
+    ///hotwords
+    config_.keywords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
+    config_.keywords_score = asr_config.hotwords_factor;
+    
+    recognizer_ = new sherpa_onnx::KeywordSpotter( config_ );
 
-    stream_ = CreateStream(recognizer_);
+    stream_ = recognizer_->CreateStream();
     return 0;
 }
 
@@ -316,45 +299,21 @@ int ASRRecognizer_Impl::StreamRecognize(
         audio_data_float[i] = audioData[i]/32768.0f;
     }
     /// accept wave data
-    AcceptWaveform(stream_, sampleRate, &audio_data_float[0], audioDataLen);
+    stream_->AcceptWaveform( sampleRate, &audio_data_float[0], audioDataLen);
 
     ///if ready decode 
     //int ret = IsReady( recognizer_, stream_);
-    while ( IsReady( recognizer_, stream_) ) {
+    while ( recognizer_->IsReady( stream_.get()) ) {
         ///decode
-        Decode(recognizer_, stream_);
+        recognizer_->DecodeStream(stream_.get());
     } 
     
-    auto results = GetResult(recognizer_, stream_);
-    if (results->count > 0) {
+    auto results = recognizer_->GetResult(stream_.get());
+    if (results.tokens.size() > 0) {
         ///copy the result to outputs
-        int len = calculateLengthWithKnownNulls(results->text, results->count-1);
-        result->text = (char*)malloc(len+1);
-        memcpy(result->text, results->text, len+1);
-        if (results->timestamps) {
-            result->timestamps = (float*)malloc(sizeof(float)*results->count);
-            memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
-        }
-        result->count = results->count;
+        
     }
-    ///asign the result to outputs
-    //result->text = results->text;
-    //destroy the results
-    DestroyResult(results);
 
-    /// check endpoint
-    *isEndPoint = ::IsEndpoint(recognizer_, stream_);
-    if (*isEndPoint) {
-        ///reset
-        this->Reset();
-    }
-    
-
-    ///if is the final 
-    if (isFinalStream) {
-        ///reset
-        InputFinished(stream_);
-    }
     return 0;
 }
 
@@ -507,22 +466,22 @@ if load successfully, return true, otherwise return false
 bool load_from_merged_file(
     const std::string& merged_file_name, 
     uint8_t** encoder_param_buffer, 
-    uint8_t** encoder_bin_buffer,
+    size_t& encoder_param_size,
     uint8_t** decoder_param_buffer,
-    uint8_t** decoder_bin_buffer,
+    size_t &decoder_param_size,
     uint8_t** joiner_param_buffer,
-    uint8_t** joiner_bin_buffer,
+    size_t &joiner_param_size,
     uint8_t** tokens_buffer,
     size_t& tokens_buffer_size
     ) {
     
     ///set all point to nullptr
     *encoder_param_buffer = nullptr;
-    *encoder_bin_buffer = nullptr;
+    encoder_param_size = 0;
     *decoder_param_buffer = nullptr;
-    *decoder_bin_buffer = nullptr;
+    decoder_param_size = 0;
     *joiner_param_buffer = nullptr;
-    *joiner_bin_buffer = nullptr;
+    joiner_param_size = 0;
     *tokens_buffer = nullptr;
 
     size_t aligned_size = 8;
@@ -548,20 +507,9 @@ bool load_from_merged_file(
     //SURE_NEW(*encoder_param_buffer);
     merged_file.read((char*)*encoder_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
+    encoder_param_size = fh.file_size;
     ///magic number xor
     process_buffer_with_magic_number(*encoder_param_buffer, fh.file_size, magic_number);
-
-    //read EB file header and data
-    merged_file.read((char*)&fh, sizeof(fh));
-    SURE_READ(merged_file, sizeof(fh));
-    assert(memcmp(fh.file_id, "EB", 2) == 0);
-    
-    *encoder_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
-    SURE_NEW(*encoder_bin_buffer);
-    merged_file.read((char*)*encoder_bin_buffer, fh.file_size);
-    SURE_READ(merged_file, fh.file_size);
-    ///magic number xor
-    process_buffer_with_magic_number(*encoder_bin_buffer, fh.file_size, magic_number);
 
     //read DP file header and data
     merged_file.read((char*)&fh, sizeof(fh));
@@ -571,19 +519,9 @@ bool load_from_merged_file(
     SURE_NEW(*decoder_param_buffer);
     merged_file.read((char*)*decoder_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
+    decoder_param_size = fh.file_size;
     ///magic number xor
     process_buffer_with_magic_number(*decoder_param_buffer, fh.file_size, magic_number);
-
-    //read DB file header and data
-    merged_file.read((char*)&fh, sizeof(fh));
-    SURE_READ(merged_file, sizeof(fh));
-    assert(memcmp(fh.file_id, "DB", 2) == 0);
-    *decoder_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
-    SURE_NEW(*decoder_bin_buffer);
-    merged_file.read((char*)*decoder_bin_buffer, fh.file_size);
-    SURE_READ(merged_file, fh.file_size);
-    ///magic number xor
-    process_buffer_with_magic_number(*decoder_bin_buffer, fh.file_size, magic_number);
 
     //read JP file header and data
     merged_file.read((char*)&fh, sizeof(fh));
@@ -593,19 +531,9 @@ bool load_from_merged_file(
     SURE_NEW(*joiner_param_buffer);
     merged_file.read((char*)*joiner_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
+    joiner_param_size = fh.file_size;
     ///magic number xor
     process_buffer_with_magic_number(*joiner_param_buffer, fh.file_size, magic_number);
-
-    //read JB file header and data
-    merged_file.read((char*)&fh, sizeof(fh));
-    SURE_READ(merged_file, sizeof(fh));
-    assert(memcmp(fh.file_id, "JB", 2) == 0);
-    *joiner_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
-    SURE_NEW(*joiner_bin_buffer);
-    merged_file.read((char*)*joiner_bin_buffer, fh.file_size);
-    SURE_READ(merged_file, fh.file_size);
-    ///magic number xor
-    process_buffer_with_magic_number(*joiner_bin_buffer, fh.file_size, magic_number);
 
     //read tokens file header and data
     merged_file.read((char*)&fh, sizeof(fh));

@@ -299,4 +299,9 @@ install(
   DESTINATION
     .
 )
+
+add_subdirectory(external/mbedtls)
+#get cpu info
+add_subdirectory(cpu_info)
+
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

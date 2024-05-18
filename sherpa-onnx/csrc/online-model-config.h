@@ -37,6 +37,10 @@ struct OnlineModelConfig {
   // All other values are invalid and lead to loading the model twice.
   std::string model_type;
 
+  //tokens buffer and size
+  unsigned char* tokens_buffer;
+  size_t tokens_buffer_size;
+  
   OnlineModelConfig() = default;
   OnlineModelConfig(const OnlineTransducerModelConfig &transducer,
                     const OnlineParaformerModelConfig &paraformer,

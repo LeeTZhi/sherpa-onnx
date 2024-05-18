@@ -12,3 +12,14 @@ install(TARGETS sherpa-onnx-c-api DESTINATION lib)
 install(FILES c-api.h
   DESTINATION include/sherpa-onnx/c-api
 )
+
+# ASR_API
+include_directories(${CMAKE_SOURCE_DIR}/external/mbedtls/include)
+include_directories(${CMAKE_SOURCE_DIR}/cpu_info)
+
+add_library(kws-api SHARED asr_api_impl.cc  get_hardware_info.cc)
+target_link_libraries(kws-api sherpa-onnx-c-api get_cpu_info mbedtls mbedcrypto mbedx509)
+target_include_directories(kws-api PRIVATE ${CMAKE_BINARY_DIR}/sherpa-onnx/c-api)
+
+install(TARGETS kws-api DESTINATION lib)
+install(FILES kws_api.h DESTINATION include/sherpa-onnx/c-api)

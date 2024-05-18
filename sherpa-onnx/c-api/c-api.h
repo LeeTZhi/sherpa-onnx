@@ -55,7 +55,7 @@ extern "C" {
 SHERPA_ONNX_API typedef struct SherpaOnnxOnlineTransducerModelConfig {
   const char *encoder;
   const char *decoder;
-  const char *joiner;
+  const char *joiner; 
 } SherpaOnnxOnlineTransducerModelConfig;
 
 // please visit
