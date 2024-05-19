@@ -5,7 +5,11 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+
+#if defined(__linux__)
 #include <linux/if.h>
+#endif 
+
 #include <mbedtls/sha256.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/entropy.h>
@@ -23,6 +27,8 @@ int get_mac_address(uint8_t address[6]) {
 #else
     strncpy(ifr.ifr_name, "eth0", IFNAMSIZ - 1);
 #endif
+
+#ifdef __linux__
     if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
         perror("ioctl");
         close(fd);
@@ -31,6 +37,7 @@ int get_mac_address(uint8_t address[6]) {
 
     memcpy(address, ifr.ifr_hwaddr.sa_data, 6);
     close(fd);
+#endif
     return 0;
 }
 

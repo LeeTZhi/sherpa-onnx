@@ -29,3 +29,6 @@ if(SHERPA_ONNX_HAS_ALSA)
 elseif((UNIX AND NOT APPLE) OR LINUX)
   message(WARNING "Not include ./asr-microphone-example since alsa is not available")
 endif()
+
+add_executable(kws-portaudio-example kws-portaudio.cc)
+target_link_libraries(kws-portaudio-example sherpa-onnx-core portaudio)
