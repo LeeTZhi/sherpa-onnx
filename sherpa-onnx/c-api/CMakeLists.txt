@@ -17,7 +17,7 @@ install(FILES c-api.h
 include_directories(${CMAKE_SOURCE_DIR}/external/mbedtls/include)
 include_directories(${CMAKE_SOURCE_DIR}/cpu_info)
 
-add_library(kws-api SHARED asr_api_impl.cc  get_hardware_info.cc)
+add_library(kws-api SHARED get_hardware_info.cc asr_api_impl.cc  )
 target_link_libraries(kws-api sherpa-onnx-c-api get_cpu_info mbedtls mbedcrypto mbedx509)
 target_include_directories(kws-api PRIVATE ${CMAKE_BINARY_DIR}/sherpa-onnx/c-api)
 

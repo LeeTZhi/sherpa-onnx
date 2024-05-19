@@ -67,7 +67,7 @@ class KeywordSpotterTransducerImpl : public KeywordSpotterImpl {
   explicit KeywordSpotterTransducerImpl(const KeywordSpotterConfig &config)
       : config_(config),
         model_(OnlineTransducerModel::Create(config.model_config)),
-        sym_(config.model_config.tokens) {
+        sym_(config.model_config.tokens_buffer, config.model_config.tokens_buffer_size) {
     if (sym_.Contains("<unk>")) {
       unk_id_ = sym_["<unk>"];
     }

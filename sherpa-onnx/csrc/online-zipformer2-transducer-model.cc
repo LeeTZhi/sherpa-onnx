@@ -37,20 +37,36 @@ OnlineZipformer2TransducerModel::OnlineZipformer2TransducerModel(
       config_(config),
       sess_opts_(GetSessionOptions(config)),
       allocator_{} {
+  if (config.transducer.buffer_flag_) //use buffer directly
   {
-    auto buf = ReadFile(config.transducer.encoder);
-    InitEncoder(buf.data(), buf.size());
-  }
+    {
+      InitEncoder(config.transducer.encoder_buffer_, config.transducer.encoder_buffer_size_);
+    }
 
-  {
-    auto buf = ReadFile(config.transducer.decoder);
-    InitDecoder(buf.data(), buf.size());
+    {
+      InitDecoder(config.transducer.decoder_buffer_, config.transducer.decoder_buffer_size_);
+    }
+    {
+      InitJoiner(config.transducer.joiner_buffer_, config.transducer.joiner_buffer_size_);
+    }
   }
+  else
+  {
+    {
+      auto buf = ReadFile(config.transducer.encoder);
+      InitEncoder(buf.data(), buf.size());
+    }
 
-  {
-    auto buf = ReadFile(config.transducer.joiner);
-    InitJoiner(buf.data(), buf.size());
-  }
+    {
+      auto buf = ReadFile(config.transducer.decoder);
+      InitDecoder(buf.data(), buf.size());
+    }
+
+    {
+      auto buf = ReadFile(config.transducer.joiner);
+      InitJoiner(buf.data(), buf.size());
+    }
+  } 
 }
 
 #if __ANDROID_API__ >= 9

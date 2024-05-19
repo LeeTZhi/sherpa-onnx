@@ -29,3 +29,7 @@ if(SHERPA_ONNX_HAS_ALSA)
 elseif((UNIX AND NOT APPLE) OR LINUX)
   message(WARNING "Not include ./asr-microphone-example since alsa is not available")
 endif()
+
+include_directories(${CMAKE_SOURCE_DIR}/sherpa-onnx/c-api)
+add_executable(recog_demo recog_demo.cpp)
+target_link_libraries(recog_demo kws-api m)

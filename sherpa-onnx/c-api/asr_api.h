@@ -112,26 +112,36 @@ ASR_API_EXPORT void* CreateStreamASRObject(
 ASR_API_EXPORT void DestroyStreamASRObject(void* streamASR);
 
 /*
- * Streaming recognize, if isEndPoint is true, the results will be stored in result, after get the results, 
+ * Streaming StreamGetResult, if isEndPoint is true, the results will be stored in result, after get the results, 
  * you should call DestroyASRResult to free the memory
     * @param streamASR: void*  
-    * @param audioData: audio data
-    * @param audioDataLen: audio data length
     * @param isFinalStream: whether is the final streams, if true, the recoginze will be end and reset
     * @param result: ASR_Result
     * @param isEndPoint: is end point
     * If Success, return 0, else return other error code   
 */
-ASR_API_EXPORT int StreamRecognize(
+ASR_API_EXPORT int StreamGetResult(
     void* streamASR, 
-    const int16_t* audioData, 
-    int audioDataLen, 
-    float sampleRate,
     int isFinalStream,
     ASR_Result* result, 
     int* isEndPoint
     );
 
+
+/*
+ *Accept the streaming wav data 
+    * @param streamASR: void*
+    * @param audioData: audio data
+    * @param audioDataLen: audio data length
+    * @param sampleRate: sample rate
+    * If Success, return 0, else return other error code
+*/
+ASR_API_EXPORT int StreamRecognizeWav(
+    void* streamASR, 
+    const int16_t* audioData, 
+    int audioDataLen, 
+    float sampleRate
+    );
 /*
     * release the memory of ASR_Result
     * @param result: ASR_Result
@@ -182,17 +192,22 @@ public:
         }
     }
 
-    int StreamRecognize_(
-        const int16_t* audioData,
-        const int audioDataLen,
+    int StreamRecognizeGetResult(        
         int isFinalStream,
-        float sampleRate,
         ASR_Result* result, 
         int* isEndPoint
         ) {
-        return ::StreamRecognize(streamASRObject, audioData, audioDataLen, sampleRate, isFinalStream, result, isEndPoint);
+        return ::StreamGetResult(streamASRObject,  isFinalStream, result, isEndPoint);
     }
 
+    int StreamRecognizeWav(
+        const int16_t* audioData, 
+        int audioDataLen, 
+        float sampleRate
+        ) {
+        return ::StreamRecognizeWav(streamASRObject, audioData, audioDataLen, sampleRate);
+    }
+    
     int ResetStreamASR_() {
         return ::ResetStreamASR(streamASRObject);
     }

@@ -9,6 +9,7 @@
 #include <string>
 #include <cstring>
 #include <cassert>
+#include <vector>
 
 using namespace std;
 
@@ -148,33 +149,26 @@ bool load_from_merged_file(
     return true;
 }
 
+std::vector<char> ReadFile(const std::string &filename) {
+  std::ifstream input(filename, std::ios::binary);
+  std::vector<char> buffer(std::istreambuf_iterator<char>(input), {});
+  return buffer;
+}
+
 /// load dp file and load the merged file, then compare them
-bool load_and_verify(const string& dp_file_name, const uint8_t* loaded_buffer) {
-    ifstream dp_file(dp_file_name.c_str(), ios::binary);
-    if (!dp_file) {
-        cout << "Failed to open file: " << dp_file_name << endl;
-        return false;
-    }
+bool load_and_verify(const string& dp_file_name, const uint8_t* loaded_buffer, size_t loaded_size) {
     
-    //Get file size
-    dp_file.seekg(0, ios::end);
-    uint32_t dp_file_size = dp_file.tellg();
-    dp_file.seekg(0, ios::beg);
-    
-    char* dp_buf = new char[dp_file_size];
-
-
-    dp_file.read(dp_buf, dp_file_size);
-    
-    
+    auto buffer = ReadFile(dp_file_name);
+    auto dp_buf = buffer.data();
+    size_t dp_file_size = buffer.size();
     if (memcmp(dp_buf, loaded_buffer, dp_file_size) != 0) {
         cout << "File content not match" << endl;
         return false;
     }
-    
-    dp_file.close();
-
-    delete[] dp_buf;
+    if (dp_file_size != loaded_size) {
+        cout << "File size not match" << endl;
+        return false;
+    }
     return true;
 }
 
@@ -256,25 +250,25 @@ int main(int argc, char* argv[]) {
     }
 
     //verify six files and buffer
-    if (load_and_verify(file_name[0], encoder_param_buffer)) {
+    if (load_and_verify(file_name[0], encoder_param_buffer, encoder_param_size)) {
         cout << "Verify encoder param file successfully" << endl;
     } else {
         cout << "Verify encoder param file failed" << endl;
     }
    
-    if (load_and_verify(file_name[1], decoder_param_buffer)) {
+    if (load_and_verify(file_name[1], decoder_param_buffer, decoder_param_size)) {
         cout << "Verify decoder param file successfully" << endl;
     } else {
         cout << "Verify decoder param file failed" << endl;
     }
     
-    if (load_and_verify(file_name[2], joint_param_buffer)) {
+    if (load_and_verify(file_name[2], joint_param_buffer, joint_param_size)) {
         cout << "Verify joint param file successfully" << endl;
     } else {
         cout << "Verify joint param file failed" << endl;
     }
    
-    if (load_and_verify(file_name[3], token_buffer)) {
+    if (load_and_verify(file_name[3], token_buffer, tokens_buffer_size)) {
         cout << "Verify token file successfully" << endl;
     } else {
         cout << "Verify token file failed" << endl;

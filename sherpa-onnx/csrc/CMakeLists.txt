@@ -1,3 +1,5 @@
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 include_directories(${CMAKE_SOURCE_DIR})
 
 if(SHERPA_ONNX_ENABLE_PYTHON)
@@ -177,6 +179,8 @@ endif()
 if(BUILD_SHARED_LIBS)
   target_link_libraries(sherpa-onnx-core onnxruntime)
 else()
+  #static lib
+  message(STATUS "build static onnxruntime")
   target_link_libraries(sherpa-onnx-core ${onnxruntime_lib_files})
 endif()
 

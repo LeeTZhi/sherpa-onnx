@@ -36,7 +36,10 @@ int verify_authtoken(const char* pSignature, const int sig_len);
 /// @param device_id
 /// @param device_id_len
 /// @return 0 if success, -1 or other value otherwise
-int get_device_id( uint8_t device_id[], int* device_id_len);
+namespace asr_api {
+    int get_device_id(uint8_t device_id[], int* device_id_len);
+}
+
 
 char g_str_error[1024] = {0};
 
@@ -86,6 +89,25 @@ class ASRRecognizer_Impl {
         /// @return Success or error code
         int Init(const ASR_Parameters& asr_config );
 
+        int AcceptWaveform(
+            float sampleRate, 
+            const int16_t* audioData, 
+            int audioDataLen
+            ) {
+            if (stream_ == nullptr) {
+                return -1;
+            }
+             ///convert the audio data to float
+            std::vector<float> audio_data_float(audioDataLen);
+            for (int i = 0; i < audioDataLen; i++) {
+                audio_data_float[i] = audioData[i]/32768.0f;
+            }
+            /// accept wave data
+            stream_->AcceptWaveform( sampleRate, &audio_data_float[0], audioDataLen);
+            
+            return 0;
+        }
+
         ///stream recognize
         ///@param audioData: audio data
         ///@param audioDataLen: audio data length
@@ -94,10 +116,7 @@ class ASRRecognizer_Impl {
         ///@param isEndPoint: is end point
         ///If Success, return 0, else return other error code
         int StreamRecognize(
-            const int16_t* audioData, 
-            int audioDataLen, 
             int isFinalStream,
-            float sampleRate,
             ASR_Result* result, 
             int* isEndPoint
             );
@@ -184,7 +203,7 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
     config.model_config.transducer.buffer_flag_ = 1;
     config.model_config.num_threads = 2;
     config.model_config.provider = "cpu";
-    config.model_config.model_type = "zipformer";
+    config.model_config.model_type = "zipformer2";
     //decoder config
     //config.model_config.num_active_paths = 2;
     
@@ -196,7 +215,7 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
 
     //config.decoder_config.num_active_paths = 1;
 
-    config.keywords_file = nullptr;
+    //config.keywords_file = nullptr;
     config.keywords_score = 1.5f;
 }
 
@@ -272,16 +291,11 @@ static size_t calculateLengthWithKnownNulls(const char* str, int knownNulls) {
 }
 
 int ASRRecognizer_Impl::StreamRecognize(
-    const int16_t* audioData, 
-    int audioDataLen, 
     int isFinalStream,
-    float sampleRate,
     ASR_Result* result, 
     int* isEndPoint
     ) {
-    if (audioData == nullptr || audioDataLen <= 0) {
-        return -1;
-    }
+
     if (result == nullptr) {
         return -1;
     }
@@ -293,14 +307,7 @@ int ASRRecognizer_Impl::StreamRecognize(
     if (!check_recog_frames_number()) {
         return -2;
     }
-    ///convert the audio data to float
-    std::vector<float> audio_data_float(audioDataLen);
-    for (int i = 0; i < audioDataLen; i++) {
-        audio_data_float[i] = audioData[i]/32768.0f;
-    }
-    /// accept wave data
-    stream_->AcceptWaveform( sampleRate, &audio_data_float[0], audioDataLen);
-
+    
     ///if ready decode 
     //int ret = IsReady( recognizer_, stream_);
     while ( recognizer_->IsReady( stream_.get()) ) {
@@ -311,7 +318,11 @@ int ASRRecognizer_Impl::StreamRecognize(
     auto results = recognizer_->GetResult(stream_.get());
     if (results.tokens.size() > 0) {
         ///copy the result to outputs
-        
+        result->count = 1;
+        std::string json = results.AsJsonString();
+        result->text = (char*)malloc(json.size() + 1);
+        memcpy(result->text, json.c_str(), json.size());
+        result->timestamps = nullptr;
     }
 
     return 0;
@@ -360,11 +371,8 @@ ASR_API_EXPORT  int ResetStreamASR(void* asr_object) {
     return asr_recognizer->Reset();
 }
 
-ASR_API_EXPORT  int StreamRecognize(
+ASR_API_EXPORT  int StreamGetResult(
     void* streamASR, 
-    const int16_t* audioData, 
-    int audioDataLen, 
-    float sampleRate,
     int isFinalStream,
     ASR_Result* result, 
     int* isEndPoint) {
@@ -374,7 +382,20 @@ ASR_API_EXPORT  int StreamRecognize(
     }
 
     ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)streamASR;
-    return asr_recognizer->StreamRecognize(audioData, audioDataLen, isFinalStream, sampleRate, result, isEndPoint);
+    return asr_recognizer->StreamRecognize(isFinalStream, result, isEndPoint);
+}
+
+ASR_API_API int StreamRecognizeWav(
+    void* streamASR, 
+    const int16_t* audioData, 
+    int audioDataLen, 
+    float sampleRate
+    ) {
+    if (streamASR == nullptr) {
+        return -1;
+    }
+    ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)streamASR;
+    return asr_recognizer->AcceptWaveform(sampleRate, audioData, audioDataLen);
 }
 
 ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
@@ -404,7 +425,7 @@ ASR_API_EXPORT int get_device_sn(uint8_t sn[], int* sn_len) {
         sprintf(g_str_error, "sn or sn_len is nullptr");
         return -1;
     }
-    int ret = get_device_id(sn, sn_len);
+    int ret = asr_api::get_device_id(sn, sn_len);
     if (ret != 0) {
         sprintf(g_str_error, "get device sn failed, error code: %d", ret);
     }
