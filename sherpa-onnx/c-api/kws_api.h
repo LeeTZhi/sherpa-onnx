@@ -1,5 +1,5 @@
-#ifndef ASR_API_H
-#define ASR_API_H
+#ifndef KWS_API_H
+#define KWS_API_H
 
 #include <stdint.h>
 
@@ -35,7 +35,7 @@ extern "C" {
 enum ASR_Version { FAST=0x01, ACCURATE=0x02 };
 
 ///struct 
-typedef struct ASR_Parameters
+typedef struct KWS_Parameters
 {
     int32_t size;
     int version; //ASR_Version
@@ -69,9 +69,9 @@ typedef struct ASR_Parameters
     float hotwords_factor;
 
     char reserved[256];
-} ASR_Parameters;
+} KWS_Parameters;
 
-typedef struct ASR_Result
+typedef struct KWS_Result
 {
     int32_t size;
     int32_t result_size;
@@ -82,7 +82,7 @@ typedef struct ASR_Result
     //识别结果数目
     int32_t count;
     char reserved[248];
-} ASR_Result;
+} KWS_Result;
 
 ///API
 /* get version and build time
@@ -98,8 +98,8 @@ ASR_API_EXPORT const char* GetSDKVersion();
     * @param authTokenLen: auth token length
     * @return: handle of stream ASR object if success, else return nullptr
 */
-ASR_API_EXPORT void* CreateStreamASRObject(
-    const ASR_Parameters* parameters,
+ASR_API_EXPORT void* CreateStreamKWSObject(
+    const KWS_Parameters* parameters,
     const char* authToken,
     const int authTokenLen
     );
@@ -109,7 +109,7 @@ ASR_API_EXPORT void* CreateStreamASRObject(
     * @param streamASR: void*
     * @return: void
 */
-ASR_API_EXPORT void DestroyStreamASRObject(void* streamASR);
+ASR_API_EXPORT void DestroyStreamKWSObject(void* streamASR);
 
 /*
  * Streaming StreamGetResult, if isEndPoint is true, the results will be stored in result, after get the results, 
@@ -123,7 +123,7 @@ ASR_API_EXPORT void DestroyStreamASRObject(void* streamASR);
 ASR_API_EXPORT int StreamGetResult(
     void* streamASR, 
     int isFinalStream,
-    ASR_Result* result, 
+    KWS_Result* result, 
     int* isEndPoint
     );
 
@@ -147,54 +147,54 @@ ASR_API_EXPORT int StreamRecognizeWav(
     * @param result: ASR_Result
     * If Success, return 0, else return other error code   
 */
-ASR_API_EXPORT int DestroyASRResult(ASR_Result* result);
+ASR_API_EXPORT int DestroyKWSResult(KWS_Result* result);
 
 /* reset the stream recognize
     * @param streamASR: void*
     * @return: If Success, return 0, else return other error code   
 */
-ASR_API_EXPORT int ResetStreamASR(void* streamASR);
+ASR_API_EXPORT int ResetStreamKWS(void* streamASR);
 
 
-ASR_API_EXPORT const char* get_last_error_message();
+ASR_API_EXPORT const char* get_kws_last_error_message();
 
 /* get the sn of the device
     * @param sn: sn buffer, allocated by caller
     * @param sn_len: sn buffer length, return the actual length of sn
     * @return: If Success, return 0, else return other error code
 */
-ASR_API_EXPORT int get_device_sn(unsigned char sn[], int* sn_len);
+ASR_API_EXPORT int get_kws_device_sn(unsigned char sn[], int* sn_len);
 
 #ifdef __cplusplus
 }
 #endif 
 
 #ifdef __cplusplus
-class ASRClass {
+class KWSClass {
 public:
-    ASRClass() {
+    KWSClass() {
         streamASRObject = nullptr;
     }
 
-    int Init(const ASR_Parameters* parameters, const char* authToken, const int authTokenLen) {
+    int Init(const KWS_Parameters* parameters, const char* authToken, const int authTokenLen) {
         
 
-        streamASRObject = CreateStreamASRObject(parameters, authToken, authTokenLen);
+        streamASRObject = CreateStreamKWSObject(parameters, authToken, authTokenLen);
         if ( streamASRObject == nullptr ) {
             return -1;
         }
     }
 
-    ~ASRClass() {
+    ~KWSClass() {
         if ( streamASRObject != nullptr ) {
-            DestroyStreamASRObject(streamASRObject);
+            DestroyStreamKWSObject(streamASRObject);
             streamASRObject = nullptr;
         }
     }
 
     int StreamRecognizeGetResult(        
         int isFinalStream,
-        ASR_Result* result, 
+        KWS_Result* result, 
         int* isEndPoint
         ) {
         return ::StreamGetResult(streamASRObject,  isFinalStream, result, isEndPoint);
@@ -208,8 +208,8 @@ public:
         return ::StreamRecognizeWav(streamASRObject, audioData, audioDataLen, sampleRate);
     }
     
-    int ResetStreamASR_() {
-        return ::ResetStreamASR(streamASRObject);
+    int ResetStreamKWS_() {
+        return ::ResetStreamKWS(streamASRObject);
     }
 
 protected:

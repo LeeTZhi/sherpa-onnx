@@ -1,5 +1,5 @@
 
-#include "asr_api.h"
+#include "kws_api.h"
 #include "sherpa-onnx/csrc/keyword-spotter.h"
 #include <algorithm>
 #include <memory>
@@ -26,11 +26,7 @@
 
 #define NULL_PTR_2_STR(t) (t != nullptr) ? t : ""
 
-/// @brief verify whether the signature is valid
-/// @param pSignature 
-/// @param sig_len 
-/// @return 0 if the signature is valid, -1 or other value otherwise
-int verify_authtoken(const char* pSignature, const int sig_len);
+
 
 /// @brief get device id
 /// @param device_id
@@ -38,6 +34,11 @@ int verify_authtoken(const char* pSignature, const int sig_len);
 /// @return 0 if success, -1 or other value otherwise
 namespace asr_api {
     int get_device_id(uint8_t device_id[], int* device_id_len);
+    /// @brief verify whether the signature is valid
+    /// @param pSignature 
+    /// @param sig_len 
+    /// @return 0 if the signature is valid, -1 or other value otherwise
+    int verify_authtoken(const char* pSignature, const int sig_len);
 }
 
 
@@ -87,7 +88,7 @@ class ASRRecognizer_Impl {
 
         /// @brief initialize the recognizer and stream
         /// @return Success or error code
-        int Init(const ASR_Parameters& asr_config );
+        int Init(const KWS_Parameters& asr_config );
 
         int AcceptWaveform(
             float sampleRate, 
@@ -117,7 +118,7 @@ class ASRRecognizer_Impl {
         ///If Success, return 0, else return other error code
         int StreamRecognize(
             int isFinalStream,
-            ASR_Result* result, 
+            KWS_Result* result, 
             int* isEndPoint
             );
         int Reset() {
@@ -166,7 +167,7 @@ class ASRRecognizer_Impl {
         #else 
             (void)bcount;
             if (usage_count_ % 100 == 0) {
-                int ret = verify_authtoken(str_auth_token_, strlen(str_auth_token_));
+                int ret = asr_api::verify_authtoken(str_auth_token_, strlen(str_auth_token_));
                 if (ret != 0) {
                     sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
                     return false;
@@ -219,7 +220,7 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
     config.keywords_score = 1.5f;
 }
 
-int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
+int ASRRecognizer_Impl::Init(const KWS_Parameters& asr_config ) {
     // model_config, config_ and recognizer_ are defined in recognizer.h
     set_default_sherpa_ncnn_config(config_);
     std::string model_name;
@@ -292,7 +293,7 @@ static size_t calculateLengthWithKnownNulls(const char* str, int knownNulls) {
 
 int ASRRecognizer_Impl::StreamRecognize(
     int isFinalStream,
-    ASR_Result* result, 
+    KWS_Result* result, 
     int* isEndPoint
     ) {
 
@@ -330,15 +331,15 @@ int ASRRecognizer_Impl::StreamRecognize(
 
 extern "C" {
 
-ASR_API_EXPORT void* CreateStreamASRObject(
-    const ASR_Parameters* asr_config, 
+ASR_API_EXPORT void* CreateStreamKWSObject(
+    const KWS_Parameters* asr_config, 
     const char* authToken,
     const int authTokenLen
     ) {    
     ASRRecognizer_Impl* asr_recognizer = new ASRRecognizer_Impl();
 
 #if __aarch64__
-    int ret = verify_authtoken(authToken, authTokenLen);
+    int ret = asr_api::verify_authtoken(authToken, authTokenLen);
     if (ret != 0) {
         delete asr_recognizer;
         sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
@@ -355,7 +356,7 @@ ASR_API_EXPORT void* CreateStreamASRObject(
     return (void*)asr_recognizer;
 }
 
-ASR_API_EXPORT  void DestroyStreamASRObject(void* asr_object) {
+ASR_API_EXPORT  void DestroyStreamKWSObject(void* asr_object) {
     if (asr_object == nullptr) {
         return;
     }
@@ -363,7 +364,7 @@ ASR_API_EXPORT  void DestroyStreamASRObject(void* asr_object) {
     delete asr_recognizer;
 }
 
-ASR_API_EXPORT  int ResetStreamASR(void* asr_object) {
+ASR_API_EXPORT  int ResetStreamKWS(void* asr_object) {
     if (asr_object == nullptr) {
         return -1;
     }
@@ -374,7 +375,7 @@ ASR_API_EXPORT  int ResetStreamASR(void* asr_object) {
 ASR_API_EXPORT  int StreamGetResult(
     void* streamASR, 
     int isFinalStream,
-    ASR_Result* result, 
+    KWS_Result* result, 
     int* isEndPoint) {
     
     if (streamASR == nullptr) {
@@ -398,7 +399,7 @@ ASR_API_API int StreamRecognizeWav(
     return asr_recognizer->AcceptWaveform(sampleRate, audioData, audioDataLen);
 }
 
-ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
+ASR_API_EXPORT int DestroyKWSResult(KWS_Result* result){
     ///TODO
     if ( result == nullptr) {
         return 0;
@@ -411,15 +412,15 @@ ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
     return 0;
 }
 
-ASR_API_EXPORT const char* get_last_error_message() {
+ASR_API_EXPORT const char* get_kws_last_error_message() {
     return g_str_error;
 }
 
-ASR_API_EXPORT const char* GetSDKVersion() {
+ASR_API_EXPORT const char* GetKWSSDKVersion() {
     return ASR_API_VERSION;
 }
 
-ASR_API_EXPORT int get_device_sn(uint8_t sn[], int* sn_len) {
+ASR_API_EXPORT int get_kws_device_sn(uint8_t sn[], int* sn_len) {
     if (sn == nullptr || sn_len == nullptr || *sn_len < 32) {
         //last error message
         sprintf(g_str_error, "sn or sn_len is nullptr");

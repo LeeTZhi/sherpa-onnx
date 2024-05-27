@@ -11,7 +11,7 @@ if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL aarch64)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
-  message(FATAL_ERROR "This file is for building shared libraries. BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
+  message(STATUS "This file is for building shared libraries. BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
 endif()
 
 set(onnxruntime_URL  "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.17.1/onnxruntime-linux-aarch64-glibc2_17-Release-1.17.1.zip")

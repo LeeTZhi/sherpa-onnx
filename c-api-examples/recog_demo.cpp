@@ -15,8 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <chrono>
 
-#include "asr_api.h"
+#include "kws_api.h"
 
 std::mutex queueMutex;
 std::condition_variable cv;
@@ -90,9 +91,14 @@ void audioRecognitionThread(void* recognizer) {
     int32_t isFinal = 0;
     int32_t isEnd = 0;
     float sampleRate = 16000.0f;
-    ASR_Result results;
+    KWS_Result results;
     memset(&results, 0, sizeof(results));
 
+    //high resolution to get the elpased time
+    //acumulate the time for each recognition
+    
+    std::chrono::duration<double> time_total = std::chrono::duration<double>::zero();
+    int64_t frame_count = 0;
     while (!recordingDone ) { 
         std::unique_lock<std::mutex> lock(queueMutex);
         cv.wait(lock, []{ return !audioQueue.empty() || recordingDone; });
@@ -106,7 +112,7 @@ void audioRecognitionThread(void* recognizer) {
             audioChunk = audioQueue.front();
             audioQueue.pop();
             lock.unlock();
-
+            auto start = std::chrono::high_resolution_clock::now();
             // do recognition, in the stream mode, two threads are needed, one is for audio input, one is for getting the result
             int ret = StreamRecognizeWav(recognizer, audioChunk.data(), audioChunk.size(), sampleRate);
             if (ret != 0) {
@@ -114,6 +120,9 @@ void audioRecognitionThread(void* recognizer) {
                 break;
             }
             ret = StreamGetResult(recognizer,  isFinal, &results, &isEnd);
+            auto end = std::chrono::high_resolution_clock::now();
+            time_total += std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+            frame_count++;
             if (ret != 0) {
                 fprintf(stderr, "Failed to get result\n");
                 break;
@@ -123,13 +132,19 @@ void audioRecognitionThread(void* recognizer) {
                     printf("Partial result: %s\n", results.text);
                 }
             }
-            DestroyASRResult(&results);
+            DestroyKWSResult(&results);
+
+            if (frame_count % 100 == 0) {
+                printf("Average time per frame: %f ms\n", time_total.count() * 1000 / frame_count);
+            }
         }
     }
 
-    ResetStreamASR(recognizer);
+    ResetStreamKWS(recognizer);
 }
 
+
+const char* auth_token = "3046022100fee5357fb8af69edca694256f3f46fae3382039a62ddb7750c3475bb83d79fb4022100e9673a0805b90d7716282c2b1622e71ee7ddceb42a8afc061e41472af911186f";
 
 int main(int32_t argc, char *argv[]) {
     if (argc < 3 ) {
@@ -142,7 +157,7 @@ int main(int32_t argc, char *argv[]) {
 #if defined(__i386__) || defined(__x86_64__)
     uint8_t device_id[64];
     int device_id_len = 64;
-    int ret = get_device_sn(device_id, &device_id_len);
+    int ret = get_kws_device_sn(device_id, &device_id_len);
     assert(ret == 0 );
     assert(device_id_len == 32 );
     printf("device_id: ");
@@ -153,7 +168,7 @@ int main(int32_t argc, char *argv[]) {
     printf("\n");
 #endif 
 
-    ASR_Parameters config;
+    KWS_Parameters config;
     memset(&config, 0, sizeof(config));
 
     config.version = FAST;
@@ -168,7 +183,7 @@ int main(int32_t argc, char *argv[]) {
     config.hotwords_factor = 2.0f;
 
     
-    void *recognizer = CreateStreamASRObject(&config, NULL, 0);
+    void *recognizer = CreateStreamKWSObject(&config, auth_token, strlen(auth_token));
     if ( recognizer == NULL ) {
         fprintf(stderr, "Failed to create recognizer\n");
         return -1;
@@ -183,6 +198,6 @@ int main(int32_t argc, char *argv[]) {
     captureThread.join();
     recogThread.join();
 
-    DestroyStreamASRObject(recognizer);
+    DestroyStreamKWSObject(recognizer);
     return 0;
 }

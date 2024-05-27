@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export PATH=/home/ltz/nvme/Audio_code/toolchain/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin:$PATH
 
 if command -v aarch64-none-linux-gnu-gcc  &> /dev/null; then
   ln -svf $(which aarch64-none-linux-gnu-gcc) ./aarch64-linux-gnu-gcc

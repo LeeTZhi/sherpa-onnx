@@ -18,7 +18,8 @@ include_directories(${CMAKE_SOURCE_DIR}/external/mbedtls/include)
 include_directories(${CMAKE_SOURCE_DIR}/cpu_info)
 
 add_library(kws-api SHARED get_hardware_info.cc asr_api_impl.cc  )
-target_link_libraries(kws-api sherpa-onnx-c-api get_cpu_info mbedtls mbedcrypto mbedx509)
+target_link_libraries(kws-api sherpa-onnx-core get_cpu_info mbedtls mbedcrypto mbedx509  
+      -Wl,-Bstatic -lc -lm  -Wl,-Bdynamic onnxruntime)
 target_include_directories(kws-api PRIVATE ${CMAKE_BINARY_DIR}/sherpa-onnx/c-api)
 
 install(TARGETS kws-api DESTINATION lib)
