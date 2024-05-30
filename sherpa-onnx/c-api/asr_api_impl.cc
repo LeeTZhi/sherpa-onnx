@@ -296,7 +296,12 @@ int ASRRecognizer_Impl::StreamRecognize(
     KWS_Result* result, 
     int* isEndPoint
     ) {
-
+    
+    result->count = 0;
+    result->text = nullptr;
+    result->timestamps = nullptr;
+    *isEndPoint = 0;
+    
     if (result == nullptr) {
         return -1;
     }
@@ -321,7 +326,7 @@ int ASRRecognizer_Impl::StreamRecognize(
         ///copy the result to outputs
         result->count = 1;
         std::string json = results.AsJsonString();
-        result->text = (char*)malloc(json.size() + 1);
+        result->text = (char*)malloc(json.size());
         memcpy(result->text, json.c_str(), json.size());
         result->timestamps = nullptr;
     }
@@ -404,9 +409,11 @@ ASR_API_EXPORT int DestroyKWSResult(KWS_Result* result){
     if ( result == nullptr) {
         return 0;
     }
-    free(result->text);
+    if(result->text != nullptr)
+        free(result->text);
     result->text = nullptr;
-    free(result->timestamps);
+    if (result->timestamps != nullptr)
+        free(result->timestamps);
     result->timestamps = nullptr;
     result->count = 0;
     return 0;

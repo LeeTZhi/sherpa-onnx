@@ -182,6 +182,7 @@ else()
   #static lib
   message(STATUS "build static onnxruntime")
   target_link_libraries(sherpa-onnx-core ${onnxruntime_lib_files})
+  #target_link_libraries(sherpa-onnx-core onnxruntime)
 endif()
 
 target_link_libraries(sherpa-onnx-core -lm)
