@@ -301,7 +301,7 @@ int ASRRecognizer_Impl::StreamRecognize(
     result->text = nullptr;
     result->timestamps = nullptr;
     *isEndPoint = 0;
-    
+
     if (result == nullptr) {
         return -1;
     }
@@ -326,9 +326,16 @@ int ASRRecognizer_Impl::StreamRecognize(
         ///copy the result to outputs
         result->count = 1;
         std::string json = results.AsJsonString();
-        result->text = (char*)malloc(json.size());
-        memcpy(result->text, json.c_str(), json.size());
-        result->timestamps = nullptr;
+        result->text = (char*)malloc(json.size() + 1);  // +1 for the null terminator
+        if (result->text != nullptr) {
+            memcpy(result->text, json.c_str(), json.size());
+            result->text[json.size()] = '\0';  // Set the null terminator
+        } else {
+            // Handle memory allocation failure
+            //last error message
+            sprintf(g_str_error, "memory allocation failed");
+            return -1;
+        }
     }
 
     return 0;
