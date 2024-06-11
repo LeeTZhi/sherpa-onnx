@@ -171,7 +171,7 @@ int main(int32_t argc, char *argv[]) {
     KWS_Parameters config;
     memset(&config, 0, sizeof(config));
 
-    config.version = FAST;
+    config.version = kFAST;
     config.faster_model_name = argv[1];
     
     char* keywords_file = NULL; //所有热词

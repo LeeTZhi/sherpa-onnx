@@ -32,7 +32,7 @@ extern "C" {
 #define ASR_API_API ASR_API_IMPORT
 #endif
 
-enum ASR_Version { FAST=0x01, ACCURATE=0x02 };
+enum KWS_Version { kFAST=0x01, kACCURATE=0x02 };
 
 ///struct 
 typedef struct KWS_Parameters
@@ -68,7 +68,8 @@ typedef struct KWS_Parameters
     /// 热词的比例，仅在hotwords_file不为空时使用
     float hotwords_factor;
 
-    char reserved[256];
+    int num_threads; // 线程数
+    char reserved[252];
 } KWS_Parameters;
 
 typedef struct KWS_Result

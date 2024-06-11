@@ -226,7 +226,7 @@ int ASRRecognizer_Impl::Init(const KWS_Parameters& asr_config ) {
     std::string model_name;
     size_t tokens_buffer_size = 0;
     ///load the model weights
-    if (asr_config.version == FAST ) {
+    if (asr_config.version == kFAST ) {
         model_name = NULL_PTR_2_STR(asr_config.faster_model_name);
     }
     else {
@@ -262,6 +262,9 @@ int ASRRecognizer_Impl::Init(const KWS_Parameters& asr_config ) {
     config_.model_config.tokens_buffer = reinterpret_cast<unsigned char*>(tokens_buffer_);
     config_.model_config.tokens_buffer_size = tokens_buffer_size;
     
+    if (asr_config.num_threads > 0 && asr_config.num_threads <= 4) {
+        config_.model_config.num_threads = asr_config.num_threads;
+    }
     
     ///hotwords
     config_.keywords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
