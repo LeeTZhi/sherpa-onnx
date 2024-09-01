@@ -16,7 +16,7 @@
 
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.2.1"
+    #define ASR_API_VERSION "0.2.2"
 #endif
 ///model weights header files
 
@@ -46,7 +46,7 @@ char g_str_error[1024] = {0};
 
 class ASRRecognizer_Impl {
     public:
-        ASRRecognizer_Impl() {
+        ASRRecognizer_Impl():config_() {
             recognizer_ = nullptr;
             stream_ = nullptr;
             encoder_param_buffer_ = nullptr;
@@ -59,11 +59,12 @@ class ASRRecognizer_Impl {
 
             usage_count_ = 0;
         }
+
         ~ASRRecognizer_Impl() {
-            if (recognizer_ != nullptr) {
+            /*if (recognizer_ != nullptr) {
                 delete recognizer_;
                 recognizer_ = nullptr;
-            }
+            }*/
             
             if (encoder_param_buffer_ != nullptr) {
                 free(encoder_param_buffer_);
@@ -133,7 +134,7 @@ class ASRRecognizer_Impl {
         }
         
     protected:
-        sherpa_onnx::KeywordSpotter* recognizer_;
+        std::unique_ptr<sherpa_onnx::KeywordSpotter> recognizer_;
         std::unique_ptr<sherpa_onnx::OnlineStream> stream_;
 
         sherpa_onnx::KeywordSpotterConfig config_;
@@ -166,7 +167,7 @@ class ASRRecognizer_Impl {
             return bcount && bdate;
         #else 
             (void)bcount;
-            if (usage_count_ % 100 == 0) {
+            if (usage_count_ % 500 == 0) {
                 int ret = asr_api::verify_authtoken(str_auth_token_, strlen(str_auth_token_));
                 if (ret != 0) {
                     sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
@@ -176,7 +177,7 @@ class ASRRecognizer_Impl {
             return true;
         #endif
         #else 
-            return bcount;
+            return true;
         #endif
         }
 
@@ -222,7 +223,26 @@ static void set_default_sherpa_ncnn_config(sherpa_onnx::KeywordSpotterConfig& co
 
 int ASRRecognizer_Impl::Init(const KWS_Parameters& asr_config ) {
     // model_config, config_ and recognizer_ are defined in recognizer.h
-    set_default_sherpa_ncnn_config(config_);
+    //set_default_sherpa_ncnn_config(config_);
+    config_.model_config.transducer.buffer_flag_ = 1;
+    config_.model_config.model_type = "zipformer2";
+    config_.model_config.provider = "cpu";
+    ///set feature
+    /*config_.feat_config.sampling_rate = 16000.0f;
+    config_.feat_config.feature_dim = 80;
+    config_.feat_config.low_freq = 20.0f;
+    config_.feat_config.high_freq = -400.0f;
+    config_.feat_config.dither = 0.0f;
+    config_.feat_config.normalize_samples = true;
+    config_.feat_config.snip_edges = false;
+    config_.feat_config.frame_shift_ms = 10.0f;
+    config_.feat_config.frame_length_ms = 25.0f;
+    config_.feat_config.is_librosa = false;
+    config_.feat_config.remove_dc_offset = true;
+    config_.feat_config.window_type = "povey";
+    config_.feat_config.nemo_normalize_type = "";
+    */
+
     std::string model_name;
     size_t tokens_buffer_size = 0;
     ///load the model weights
@@ -270,7 +290,7 @@ int ASRRecognizer_Impl::Init(const KWS_Parameters& asr_config ) {
     config_.keywords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
     config_.keywords_score = asr_config.hotwords_factor;
     
-    recognizer_ = new sherpa_onnx::KeywordSpotter( config_ );
+    recognizer_ = std::make_unique<sherpa_onnx::KeywordSpotter>(config_);
 
     stream_ = recognizer_->CreateStream();
     return 0;
@@ -306,14 +326,17 @@ int ASRRecognizer_Impl::StreamRecognize(
     *isEndPoint = 0;
 
     if (result == nullptr) {
+        sprintf(g_str_error, "result is nullptr");
         return -1;
     }
     if (isEndPoint == nullptr) {
+        sprintf(g_str_error, "isEndPoint is nullptr");
         return -1;
     }
 
     ///check the frames number
     if (!check_recog_frames_number()) {
+        sprintf(g_str_error, "check license failed!");
         return -2;
     }
     
@@ -353,7 +376,7 @@ ASR_API_EXPORT void* CreateStreamKWSObject(
     ) {    
     ASRRecognizer_Impl* asr_recognizer = new ASRRecognizer_Impl();
 
-#if __aarch64__
+#ifdef __aarch64__
     int ret = asr_api::verify_authtoken(authToken, authTokenLen);
     if (ret != 0) {
         delete asr_recognizer;
@@ -394,6 +417,7 @@ ASR_API_EXPORT  int StreamGetResult(
     int* isEndPoint) {
     
     if (streamASR == nullptr) {
+        sprintf(g_str_error, "streamASR is nullptr");
         return -1;
     }
 

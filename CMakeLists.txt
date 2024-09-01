@@ -304,6 +304,7 @@ install(
     .
 )
 
+option(USE_SHARED_MBEDTLS_LIBRARY "Use shared mbedtls library" OFF)
 add_subdirectory(external/mbedtls)
 #get cpu info
 add_subdirectory(cpu_info)

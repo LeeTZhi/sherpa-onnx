@@ -13,13 +13,13 @@ install(FILES c-api.h
   DESTINATION include/sherpa-onnx/c-api
 )
 
+set(CMAKE_CXX_STANDARD 14)
 # ASR_API
 include_directories(${CMAKE_SOURCE_DIR}/external/mbedtls/include)
 include_directories(${CMAKE_SOURCE_DIR}/cpu_info)
 
 add_library(kws-api SHARED get_hardware_info.cc asr_api_impl.cc  )
-target_link_libraries(kws-api sherpa-onnx-core get_cpu_info mbedtls mbedcrypto mbedx509  
-      -Wl,-Bstatic -lc -lm  -Wl,-Bdynamic onnxruntime)
+target_link_libraries(kws-api sherpa-onnx-core get_cpu_info mbedtls mbedcrypto mbedx509  onnxruntime)
 target_include_directories(kws-api PRIVATE ${CMAKE_BINARY_DIR}/sherpa-onnx/c-api)
 
 install(TARGETS kws-api DESTINATION lib)

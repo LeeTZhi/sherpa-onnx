@@ -69,7 +69,7 @@ struct KeywordSpotterConfig {
 
   std::string keywords_file;
 
-  KeywordSpotterConfig() = default;
+  KeywordSpotterConfig(): feat_config(), model_config() {};
 
   KeywordSpotterConfig(const FeatureExtractorConfig &feat_config,
                        const OnlineModelConfig &model_config,

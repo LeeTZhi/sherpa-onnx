@@ -27,7 +27,7 @@
 #else
 #define SHERPA_ONNX_LOGE(...)                        \
   do {                                               \
-    fprintf(stderr, "%s:%s:%d ", __FILE__, __func__, \
+    fprintf(stderr, "%s:%d ",  __func__, \
             static_cast<int>(__LINE__));             \
     fprintf(stderr, ##__VA_ARGS__);                  \
     fprintf(stderr, "\n");                           \

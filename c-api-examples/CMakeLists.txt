@@ -33,3 +33,10 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/sherpa-onnx/c-api)
 add_executable(recog_demo recog_demo.cpp)
 target_link_libraries(recog_demo kws-api m)
+
+#enable cxx14
+set(CMAKE_CXX_STANDARD 14)
+
+add_executable(kws_config_demo test_feature.cc)
+target_include_directories(kws_config_demo PRIVATE ${CMAKE_SOURCE_DIR}/..)
+target_link_libraries(kws_config_demo sherpa-onnx-c-api)

@@ -8,9 +8,6 @@
 extern "C" {
 #endif
 
-// See https://github.com/pytorch/pytorch/blob/main/c10/macros/Export.h
-// We will set SHERPA_NCNN_BUILD_SHARED_LIBS and SHERPA_NCNN_BUILD_MAIN_LIB in
-// CMakeLists.txt
 
 #if defined(_WIN32)
 #if defined(ASR_API_BUILD_SHARED_LIBS)

@@ -71,7 +71,8 @@ static bool EncodeBase(std::istream &is, const SymbolTable &symbol_table,
                 "Cannot find ID for token %s at line: %s. (Hint: words on "
                 "the same line are separated by spaces)",
                 word.c_str(), line.c_str());
-            return false;
+            //return false;
+            break;
         }
       }
     }
