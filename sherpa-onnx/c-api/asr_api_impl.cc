@@ -16,7 +16,7 @@
 
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.2.2"
+    #define ASR_API_VERSION "0.3.0"
 #endif
 ///model weights header files
 
@@ -470,6 +470,15 @@ ASR_API_EXPORT int get_kws_device_sn(uint8_t sn[], int* sn_len) {
     int ret = asr_api::get_device_id(sn, sn_len);
     if (ret != 0) {
         sprintf(g_str_error, "get device sn failed, error code: %d", ret);
+    }
+    return ret;
+}
+
+//Verify the license 
+ASR_API_EXPORT int VerifyLicenseKWS(const char* authToken, const int authTokenLen) {
+    int ret = asr_api::verify_authtoken(authToken, authTokenLen);
+    if (ret != 0) {
+        sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
     }
     return ret;
 }

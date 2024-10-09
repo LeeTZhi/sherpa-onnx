@@ -163,6 +163,13 @@ ASR_API_EXPORT const char* get_kws_last_error_message();
 */
 ASR_API_EXPORT int get_kws_device_sn(unsigned char sn[], int* sn_len);
 
+/* Verify the license(auth token)
+    * @param authToken: auth token
+    * @param authTokenLen: auth token length
+    * @return: If Success, return 0, else return other error code
+*/
+ASR_API_EXPORT int VerifyLicenseKWS(const char* authToken, const int authTokenLen);
+
 #ifdef __cplusplus
 }
 #endif 
